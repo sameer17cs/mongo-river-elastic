@@ -181,7 +181,7 @@ class River {
             }
             else {
                 this._mongo_db_ref.collection(collectionName).deleteOne(filter, options, (err, response) => {
-                    if (!err) {
+                    if (!err && findResponse) {
                         this.transporter.delete(collectionName, [findResponse[primaryKeyField]]);
                     }
                     return callback(err, response);
@@ -210,7 +210,7 @@ class River {
             }
             else {
                 this._mongo_db_ref.collection(collectionName).deleteMany(filter, options, (err, response) => {
-                    if (!err) {
+                    if (!err && findResponse.length > 0) {
                         this.transporter.delete(collectionName, findResponse.map(x => x[primaryKeyField]));
                     }
                     return callback(err, response);
@@ -254,7 +254,7 @@ class River {
         let transporterBulkOperations = {sync: timestamp, delete: []};
 
         Promise.all(operations.map((x, index) => {
-            return new Promise((resolve,reject) => {
+            return new Promise((resolve, reject) => {
                 let op = Object.keys(x)[0];
                 switch (op) {
                     case 'insertOne':
@@ -298,7 +298,7 @@ class River {
                                 reject(err);
                             }
                             else {
-                                if (docs.length > 0){
+                                if (docs.length > 0) {
                                     transporterBulkOperations.delete = transporterBulkOperations.delete.concat(docs.map(x => x[primaryKeyField]));
                                 }
                                 resolve()
@@ -325,10 +325,13 @@ class River {
 }
 
 class Transporter {
+
     constructor(_mongo_db_ref, _es_ref, _collection_index_dict, options) {
         this._es_ref = _es_ref;
         this._mongo_db_ref = _mongo_db_ref;
         this._collection_index_dict = _collection_index_dict;
+        this.retryCount = options.retryCount || 3;
+        this.backlogCollection = 'river_backlog';
         this.logger = new Logger(options.logLevel);
 
         let customField = 'river';
@@ -338,8 +341,9 @@ class Transporter {
         for (let eachCollection in _collection_index_dict) {
             _mongo_db_ref.collection(eachCollection).createIndex(customField);
         }
-    }
 
+        setInterval(() => {this.backlog(_mongo_db_ref)}, 60000)
+    }
 
     //docs can be object or array of object
     sync(collectionName, timestamp) {
@@ -369,7 +373,7 @@ class Transporter {
                 }, function (err, resp) {
                     if (err) {
                         _this.logger.error(err);
-                        return _this.sync(collectionName, timestamp)
+                        return _this.retry({collectionName: collectionName, sync: timestamp})
                     }
                     else if (resp.errors) {
                         _this.logger.error(JSON.stringify(resp.items));
@@ -381,10 +385,11 @@ class Transporter {
             })
             .catch((err) => {
                 _this.logger.error(err);
-                return _this.sync(collectionName, timestamp)
+                return _this.retry({collectionName: collectionName, sync: timestamp})
             });
     }
 
+    //delete array of docs
     delete(collectionName, ids) {
         let _this = this;
         let index = this._collection_index_dict[collectionName].index;
@@ -412,15 +417,76 @@ class Transporter {
                 })
                 .catch((err) => {
                     _this.logger.error(err);
-                    _this.delete(collectionName, ids);
+                    return _this.retry({collectionName: collectionName, delete: ids})
+
                 })
         }
     }
 
+    //bulk operation
     bulkWrite(collectionName, transporterBulkOperations) {
         this.sync(collectionName, transporterBulkOperations.sync);
         this.delete(collectionName, transporterBulkOperations.delete);
 
+    }
+
+    retry(object) {
+        if (this.retryCount > 0) {
+
+            if (object.hasOwnProperty('sync')) {
+                setTimeout(() => {
+                    this.sync(object.collectionName, object.sync);
+                }, Math.floor(Math.random() * 10000))
+
+            }
+            if (Object.hasOwnProperty('delete')) {
+                setTimeout(() => {
+                    this.delete(object.collectionName, object.delete)
+                }, Math.floor(Math.random() * 10000))
+            }
+            this.retryCount = this.retryCount - 1;
+            this.retryCount = Math.max(this.retryCount--, 0)
+        }
+        else {
+            this._mongo_db_ref.collection(this.backlogCollection).findOne({collectionName: object.collectionName})
+                .then((retryInstruction) => {
+                    let updatedRetryInstruction = {collectionName:  object.collectionName};
+                    if (object.sync) {
+                        updatedRetryInstruction.sync = retryInstruction && retryInstruction.sync ? retryInstruction.sync : object.sync;
+                    }
+                    if (object.delete) {
+                        updatedRetryInstruction.delete = retryInstruction && retryInstruction.delete ? [...new Set(retryInstruction.delete.concat(object.delete))] : object.delete;
+                    }
+
+                    this._mongo_db_ref.collection(this.backlogCollection).updateOne({collectionName: object.collectionName},
+                        {
+                            $set:updatedRetryInstruction
+                        },
+                        {upsert: true}
+                    )
+
+
+                })
+                .catch((err) => {
+                    this.logger.error(err);
+                })
+        }
+    }
+
+    //run retry in setInterval
+    backlog() {
+        this._mongo_db_ref.collection(this.backlogCollection).find().toArray()
+            .then((allBacklogs) => {
+                this._mongo_db_ref.collection(this.backlogCollection).remove({});
+                allBacklogs.forEach((x) => {
+                    if (x.sync) {
+                        this.sync(x.collectionName, x.sync)
+                    }
+                    if (x.delete) {
+                        this.delete(x.collectionName, x.delete)
+                    }
+                })
+            })
     }
 }
 
