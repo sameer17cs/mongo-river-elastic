@@ -4,7 +4,8 @@
   "description": "mongodb to elastic river plugin, sync realtime",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./test/sanity.sh",
+    "patch-release": "npm version patch && npm publish && git push --follow-tags"
   },
   "repository": {
     "type": "git",
@@ -24,6 +25,7 @@
   "bugs": {
     "url": "https://github.com/sameer17cs/mongo-river-elastic/issues"
   },
+
   "homepage": "https://github.com/sameer17cs/mongo-river-elastic#readme",
   "dependencies": {
     "elasticsearch": "^15.4.1",
