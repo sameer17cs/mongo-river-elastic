@@ -13,7 +13,7 @@ const global = {
     river: {
         _collection_index_dict:
             {'river_coll': {index: 'river', type: 'test', primaryKeyField: 'primaryKey'}},
-        options: {logLevel: 'debug'}
+        options: {logLevel: 'debug', retryCount: 3}
     }
 };
 

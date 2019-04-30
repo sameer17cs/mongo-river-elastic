@@ -1,87 +1,155 @@
 # mongo-river-elastic
 
-This library provides a nodejs wrapper over [mongodb-core]([http://mongodb.github.io/node-mongodb-native/core/driver/](http://mongodb.github.io/node-mongodb-native/core/driver/)) , which allows to seamlessly sync data with your elasticsearch.
+The mongo-river-elastic project provides a nodejs wrapper over [mongodb nodejs](http://mongodb.github.io/node-mongodb-native/3.2/) , which synchronize data from your mongodb to elasticsearch.
+It is tested and works best with following:
+* Mongodb v4.0+
+* Mongodb Nodejs Driver v3.2
+* elasticsearch v6.0+
+
+Following Mongodb functions are supported:
+* [insert](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#insert)
+* [insertMany](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#insertMany)
+* [insertOne](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#insertOne)
+* [update](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#update)
+* [updateMany](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#updateMany)
+* [updateOne](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#updateOne)
+* [deleteOne](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#deleteOne)
+* [deleteMany](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#deleteMany)
+* [replaceOne](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#replaceOne)
+* [bulkWrite](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#bulkWrite)
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+These instructions will install mongo-river-elastic npm package, which you can use import in your project.
 
 ### Prerequisites
 
-What things you need to install the software and how to install them
+Dependent packages
 
 ```
-Give examples
+npm install mongodb
+npm install elasticsearch
 ```
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running
-
-Say what the step will be
-
 ```
-Give the example
+npm install mongo-river-elastic
+npm install mongo-river-elastic --save
 ```
 
-And repeat
+### Initialize
 
+```javascript
+const River = require('mongo-river-elastic')
+let river = new River(_mongo_db_ref, _es_ref, _collection_index_dict, options)
 ```
-until finished
+Parameters:
+* **_mongo_db_ref** &nbsp; --  *Object*
+
+    * mongodb database connection reference object
+* **_es_ref** &nbsp; -- *Object*
+    * elasticsearch connection reference object
+* **_collection_index_dict** &nbsp; --  *Object*
+    * Object dictionary that contains mapping between mongodb collections and elasticsearch index/type
+    * Example
+        ```javascript
+        _collection_index_dict =
+        { 'collection1': {index: 'index1', type: 'type1', primaryKeyField: 'primaryKeyField1'},
+          'collection2': {index: 'index2', type: 'type2', primaryKeyField: 'primaryKeyField2'}}
+
+        where,
+          'collection1': mongodb collection
+          'index1': elasticsearch index
+          'primaryKeyField1': mongodb collection object 'key' to be used as primary key in elasticsearch
+        ```
+
+* **options** &nbsp; -- *Object*
+    * loglevel &nbsp; &nbsp;  *String*
+        * Set log level for River logging (elasticsearch log)
+        * info | error | debug
+    * retryCount  &nbsp; &nbsp;  *String*
+        * No. of retries if elasticsearch write fails
+
+### Examples
+##### Setup River Object
+
+```javascript
+const elasticsearch = require('elasticsearch');
+const MongoClient = require('mongodb').MongoClient;
+const River = require('mongo-river-elastic');
+
+// Connect Mongodb
+MongoClient.connect('localhost:27017', function (err, mongoClient) {
+    const _mongo_db_ref = mongoClient.db('test_database');
+
+    // connect elasticsearch
+    const _es_ref = new elasticsearch.Client({host: 'localhost:9200'});
+
+    // init River
+    const ._collection_index_dict = {
+    'collection1': {index: 'index1', type: 'type1', primaryKeyField: '_id'},
+    'collection2': {index: 'index2', type: 'type2', primaryKeyField: 'uuid'}
+    };
+    const options= {logLevel: 'debug', retryCount: 3};
+    let river = new River(_mongo_db_ref, _es_ref, _collection_index_dict, options);
 ```
 
-End with an example of getting some data out of the system or using it for a little demo
+##### CRUDS
+* River CRUDS accepts options exactly similar to mongodb CRUDS
+* Only difference is, the first argument to any CRUD is name the of **collection**
+* **mongodb_options** is optional, similar to mongodb
+* INSERT
+```javascript
+    const mongodb_options = {}
+    //insert, insertOne, insertMany
+    river.insertOne('collection1', {'_id': '1', 'key': 'value'}, mongodb_options, (err, response) => {
+        ...
+    });
 
-## Running the tests
-
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
+    river.insertMany('collection2', [
+        {'uuid': '1', 'key': 'value1'},
+        {'uuid': '2', 'key': 'value2'},
+        {'uuid': '3', 'key': 'value3'}], (err, response) => {
+        ...
+    });
 ```
-Give an example
+* UPDATE
+```javascript
+ //update, updateOne, updateMany
+    river.updateOne('collection1', {'key': 'value'}, {$set: {'anotherKey': 'anotherValue'}}, mongodb_options, (err, response) => {
+        ...
+    });
+```
+* DELETE
+```javascript
+    //deleteOne, deleteMany
+    river.deleteOne('collection1', {'key': 'value'},mongodb_options, (err, response) => {
+        ...
+    });
+```
+* REPLACE
+```javascript
+    river.replaceOne('collection1', {'key': 'value'}, {
+        '_id': 10,
+        'key': 'value',
+        'anotherKey': 'another value'
+    }, (err, response) => {
+
+    });
+```
+* BULK WRITE
+```javascript
+    river.bulkWrite('collection1',
+    [
+        {insertOne: {document: {'_id': '1', 'key': 'value'}}},
+         {updateOne: {filter: {'key': 'value'},update: {$set: {'anotherKey': 'anotherValue'}},upsert: true}},
+         {deleteOne: {filter: {'key': 'value'}}},
+    ],mongodb_options, (err, response) => {
+
+    });
 ```
 
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-## Deployment
-
-Add additional notes about how to deploy this on a live system
-
-## Built With
-
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
-
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags).
-
-## Authors
-
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
 
 ## License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
+This project is licensed under the MIT License

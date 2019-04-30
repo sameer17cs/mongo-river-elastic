@@ -434,15 +434,11 @@ class Transporter {
         if (this.retryCount > 0) {
 
             if (object.hasOwnProperty('sync')) {
-                setTimeout(() => {
-                    this.sync(object.collectionName, object.sync);
-                }, Math.floor(Math.random() * 10000))
+                this.sync(object.collectionName, object.sync);
 
             }
             if (Object.hasOwnProperty('delete')) {
-                setTimeout(() => {
-                    this.delete(object.collectionName, object.delete)
-                }, Math.floor(Math.random() * 10000))
+                this.delete(object.collectionName, object.delete)
             }
             this.retryCount = this.retryCount - 1;
             this.retryCount = Math.max(this.retryCount--, 0)
