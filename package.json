@@ -1,6 +1,6 @@
 {
   "name": "mongo-river-elastic",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "mongodb to elastic river plugin, sync realtime",
   "main": "index.js",
   "scripts": {
@@ -25,7 +25,6 @@
   "bugs": {
     "url": "https://github.com/sameer17cs/mongo-river-elastic/issues"
   },
-
   "homepage": "https://github.com/sameer17cs/mongo-river-elastic#readme",
   "dependencies": {
     "elasticsearch": "^15.4.1",
