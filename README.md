@@ -1,5 +1,5 @@
 # mongo-river-elastic
-
+https://www.npmjs.com/package/mongo-river-elastic
 The mongo-river-elastic project provides a nodejs wrapper over [mongodb nodejs](http://mongodb.github.io/node-mongodb-native/3.2/) , which synchronize data from your mongodb to elasticsearch.
 It is tested and works best with following:
 * Mongodb v4.0+
@@ -27,7 +27,7 @@ Following Mongodb functions are supported:
 * To ensure consistency when elasticsearch is unreachable/down/busy, a mongodb collection ```river_backlog``` is created, which contains a single document having meta-information about objects yet to be synced. It will be deleted once elasticsearch is reachable and sync is complete.
 ###### Primary Key
 * Elasticsearch expects a primary key for each insert. You have to specify your ```primaryKeyField``` in mongodb document which will be used by the library.
-* Avoid using mongodb bson id ```_id``` as primary key.
+* If you dont have any primary key field, use mongodb bson id ```_id```
 * Primary key in elasticsearch is always ```string```.
 
 ### Prerequisites
