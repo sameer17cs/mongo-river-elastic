@@ -1,6 +1,6 @@
 {
   "name": "mongo-river-elastic",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "mongodb to elastic river plugin, sync realtime",
   "main": "index.js",
   "scripts": {

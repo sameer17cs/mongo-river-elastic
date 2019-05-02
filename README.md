@@ -69,6 +69,7 @@ Parameters:
         where,
           'collection1': mongodb collection
           'index1': elasticsearch index
+          'type': elasticsearch index mapping name
           'primaryKeyField1': mongodb collection object 'key' to be used as primary key in elasticsearch
         ```
 
@@ -76,7 +77,7 @@ Parameters:
     * loglevel &nbsp; &nbsp;  *String*
         * Set log level for River logging (elasticsearch log)
         * info | error | debug
-    * retryCount  &nbsp; &nbsp;  *String*
+    * retryCount  &nbsp; &nbsp;  *number*
         * No. of retries if elasticsearch write fails
 
 ### Examples
