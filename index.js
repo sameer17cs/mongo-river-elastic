@@ -352,8 +352,7 @@ class Transporter {
         query[this._custom_mongo_db_field] = {$gte: timestamp};
         this._mongo_db_ref.collection(collectionName).find(query, {
             projection: {
-                river: 0,
-                _id: 0
+                river: 0
             }
         }).toArray()
             .then((docs) => {
@@ -362,8 +361,13 @@ class Transporter {
                 let primaryKeyField = this._collection_index_dict[collectionName].primaryKeyField;
                 let insertBody = [];
                 docs.map((x) => {
+
                     // action description
                     insertBody.push({index: {_index: index, _type: type, _id: x[primaryKeyField]}});
+
+                    //delete _id
+                    delete x._id;
+
                     // the document to index
                     insertBody.push(x)
 
@@ -394,10 +398,11 @@ class Transporter {
         let _this = this;
         let index = this._collection_index_dict[collectionName].index;
         let type = this._collection_index_dict[collectionName].type;
-
         if (ids.length) {
             Promise.all(ids.map((x) => {
                 return new Promise((resolve, reject) => {
+
+                    x = (typeof x === 'string') ? x : x.toString();
                     this._es_ref.delete({index: index, type: type, id: x}, function (err, resp) {
                         if (err) {
                             return reject(err);

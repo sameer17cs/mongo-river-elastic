@@ -20,7 +20,15 @@ Following Mongodb functions are supported:
 
 ## Getting Started
 
-These instructions will install mongo-river-elastic npm package, which you can use import in your project.
+#### Before you use the library, following points are crucial
+###### Collections
+* It will not auto-create elasticsearch index, all the indexes has to be created by you.
+* All objects in a collection is appended with an extra key called ```river``` during insert/update and it is indexed. This key stores timestamp and is used for syncing with elasticsearch
+* To ensure consistency when elasticsearch is unreachable/down/busy, a mongodb collection ```river_backlog``` is created, which contains a single document having meta-information about objects yet to be synced. It will be deleted once elasticsearch is reachable and sync is complete.
+###### Primary Key
+* Elasticsearch expects a primary key for each insert. You have to specify your ```primaryKeyField``` in mongodb document which will be used by the library.
+* Avoid using mongodb bson id ```_id``` as primary key.
+* Primary key in elasticsearch is always ```string```.
 
 ### Prerequisites
 
