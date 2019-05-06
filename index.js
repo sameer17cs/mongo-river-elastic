@@ -336,6 +336,7 @@ class Transporter {
 
         let customField = 'river';
         this._custom_mongo_db_field = customField;
+        this.versionCheck(_es_ref);
 
         //ensure index on transport field
         for (let eachCollection in _collection_index_dict) {
@@ -343,6 +344,18 @@ class Transporter {
         }
 
         setInterval(() => {this.backlog(_mongo_db_ref)}, 60000)
+    }
+
+    versionCheck(_es_ref) {
+        _es_ref.info({}, (err, response) => {
+            if (err) {
+                process.exit('Elastic connection Failed');
+            }
+            else {
+                this.isTypeDepricated = parseInt(response.version.number) > 6;
+            }
+
+        })
     }
 
     //docs can be object or array of object
@@ -357,13 +370,17 @@ class Transporter {
         }).toArray()
             .then((docs) => {
                 let index = this._collection_index_dict[collectionName].index;
-                let type = this._collection_index_dict[collectionName].type;
                 let primaryKeyField = this._collection_index_dict[collectionName].primaryKeyField;
                 let insertBody = [];
                 docs.map((x) => {
 
+                    let description = {_index: index, _id: x[primaryKeyField]};
+                    if (!_this.isTypeDepricated) {
+                        description['_type'] = _this._collection_index_dict[collectionName].type;
+                    }
+
                     // action description
-                    insertBody.push({index: {_index: index, _type: type, _id: x[primaryKeyField]}});
+                    insertBody.push({index: description});
 
                     //delete _id
                     delete x._id;
@@ -397,13 +414,17 @@ class Transporter {
     delete(collectionName, ids) {
         let _this = this;
         let index = this._collection_index_dict[collectionName].index;
-        let type = this._collection_index_dict[collectionName].type;
         if (ids.length) {
             Promise.all(ids.map((x) => {
                 return new Promise((resolve, reject) => {
 
                     x = (typeof x === 'string') ? x : x.toString();
-                    this._es_ref.delete({index: index, type: type, id: x}, function (err, resp) {
+
+                    let deleteQuery = {index: index, id: x};
+                    if (!_this.isTypeDepricated) {
+                        deleteQuery['type']  = _this._collection_index_dict[collectionName].type;
+                    }
+                    this._es_ref.delete(deleteQuery, function (err, resp) {
                         if (err) {
                             return reject(err);
                         }

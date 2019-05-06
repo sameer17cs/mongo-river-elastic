@@ -4,7 +4,7 @@ The mongo-river-elastic project provides a nodejs wrapper over [mongodb nodejs](
 It is tested and works best with following:
 * Mongodb v4.0+
 * Mongodb Nodejs Driver v3.2
-* elasticsearch v6.0+
+* elasticsearch v6.0+ , v7.0+
 
 Following Mongodb functions are supported:
 * [insert](http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#insert)
@@ -29,6 +29,10 @@ Following Mongodb functions are supported:
 * Elasticsearch expects a primary key for each insert. You have to specify your ```primaryKeyField``` in mongodb document which will be used by the library.
 * If you dont have any primary key field, use mongodb bson id ```_id```
 * Primary key in elasticsearch is always ```string```.
+
+Elasticsearch v7.0
+* This elasticsearch version has ```_type``` field depricated.
+* If your elasticsearch is v7.0+, library will ignore the type value provided in ```_collection_index_dict```
 
 ### Prerequisites
 
@@ -65,13 +69,13 @@ Parameters:
         _collection_index_dict =
         { 'collection1': {index: 'index1', type: 'type1', primaryKeyField: 'primaryKeyField1'},
           'collection2': {index: 'index2', type: 'type2', primaryKeyField: 'primaryKeyField2'}}
-
-        where,
-          'collection1': mongodb collection
-          'index1': elasticsearch index
-          'type': elasticsearch index mapping name
-          'primaryKeyField1': mongodb collection object 'key' to be used as primary key in elasticsearch
         ```
+        where,
+        * ```collection1```: mongodb collection name
+        * ```index1```: elasticsearch index name
+        * ```type```: elasticsearch index mapping name. Set to ```null``` if not applicable.
+        * ```primaryKeyField1```: mongodb collection object ```key``` to be used as primary key in elasticsearch
+
 
 * **options** &nbsp; -- *Object*
     * loglevel &nbsp; &nbsp;  *String*
